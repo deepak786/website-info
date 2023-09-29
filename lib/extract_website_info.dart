@@ -60,6 +60,7 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
                 decoration: const InputDecoration(
                   hintText: "Enter url",
                 ),
+                textInputAction: TextInputAction.next,
               ),
               const SizedBox(height: 8),
               ElevatedButton(
