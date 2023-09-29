@@ -133,18 +133,25 @@ class WebsiteInfoItem extends StatelessWidget {
   }
 
   Widget getIcon(Favicon icon) {
-    return Container(
+    return Padding(
       padding: const EdgeInsets.all(8),
-      width: icon.width / 2,
-      height: icon.height / 2,
       child: icon.isSvg
           ? SvgPicture.network(
               icon.url,
               alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              width: icon.width / 2,
+              height: icon.height / 2,
             )
           : CachedNetworkImage(
               imageUrl: icon.url,
               alignment: Alignment.centerLeft,
+              fit: BoxFit.scaleDown,
+              width: icon.width / 2,
+              height: icon.height / 2,
+              errorWidget: (BuildContext context, String url, Object error) {
+                return Container();
+              },
             ),
     );
   }
