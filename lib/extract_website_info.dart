@@ -3,7 +3,7 @@ import 'dart:typed_data';
 import 'package:beautiful_soup_dart/beautiful_soup.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
-import 'package:image/image.dart';
+import 'package:image/image.dart' as img;
 import 'package:website_info/website_data.dart';
 import 'package:website_info/website_info_item.dart';
 
@@ -223,10 +223,15 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
         width = 100;
         height = 100;
       } else {
-        var image = decodeImage(response.bodyBytes);
-        if (image != null && image.isValid) {
-          width = image.width;
-          height = image.height;
+        try {
+          var image = img.decodeImage(response.bodyBytes);
+          if (image != null && image.isValid) {
+            width = image.width;
+            height = image.height;
+          }
+        } catch (e) {
+          debugPrint(e.toString());
+          return null;
         }
       }
 
