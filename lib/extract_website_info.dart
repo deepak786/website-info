@@ -1,9 +1,14 @@
+import 'dart:convert';
 import 'dart:typed_data';
 
 import 'package:beautiful_soup_dart/beautiful_soup.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
+import 'package:palette_generator/palette_generator.dart';
+import 'package:website_info/manifest.dart';
+import 'package:website_info/utils.dart';
 import 'package:website_info/website_data.dart';
 import 'package:website_info/website_info_item.dart';
 
@@ -84,8 +89,10 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
 
                   String? html = await loadHtml(url);
                   String title = "";
-                  String siteName = "";
+                  String name = "";
+                  String themeColor = "";
                   List<Favicon> icons = [];
+                  List<Color> paletteColors = [];
 
                   if (html != null) {
                     BeautifulSoup bs = BeautifulSoup(html);
@@ -95,19 +102,81 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
                       // title
                       title = head.title?.string ?? '';
 
+                      // get the base url
+                      var baseUrl = head.find("base")?.attributes['href'];
+                      if (baseUrl == null || baseUrl.trim().isEmpty) {
+                        baseUrl = url;
+                      } else {
+                        baseUrl = regenerateUrlWithBaseUrl(
+                          baseUrl: url,
+                          url: baseUrl,
+                        );
+                      }
+
+                      // remove trailing slash from base url
+                      if (baseUrl.endsWith('/')) {
+                        baseUrl = baseUrl.substring(0, baseUrl.length - 1);
+                      }
+
+                      // Check if there is manifest file
+                      var manifestLink = head.find("link", attrs: {
+                            "rel": "manifest",
+                          })?.attributes['href'] ??
+                          '';
+                      if (manifestLink.isNotEmpty) {
+                        manifestLink = regenerateUrlWithBaseUrl(
+                          baseUrl: baseUrl,
+                          url: manifestLink,
+                        );
+
+                        // get the data from manifest
+                        var manifest = await loadManifest(manifestLink);
+                        if (manifest != null) {
+                          name = manifest.name;
+                          themeColor = manifest.themeColor;
+                          icons = manifest.icons
+                              .map((e) => e.toFavicon(baseUrl!))
+                              .toList()
+                            ..sort();
+                        }
+                      }
+
+                      // get the data by parsing the head element
+
                       // og:site_name
-                      var ogSiteName = head.find("meta", attrs: {
-                        "property": "og:site_name",
-                      });
-                      siteName = ogSiteName?.attributes['content'] ?? '';
+                      if (name.isEmpty) {
+                        name = head.find("meta", attrs: {
+                              "property": "og:site_name",
+                            })?.attributes['content'] ??
+                            '';
+                      }
+
+                      // theme-color
+                      if (themeColor.isEmpty) {
+                        themeColor = head.find("meta", attrs: {
+                              "name": "theme-color",
+                            })?.attributes['content'] ??
+                            '';
+                      }
 
                       // icons
-                      icons = await getIcons(url, head);
+                      if (icons.isEmpty) {
+                        icons = await getIcons(baseUrl, head);
+                      }
+
+                      // palette color
+                      paletteColors = await getPaletteColors(icons);
                     }
                   }
 
                   data = WebsiteData(
-                      url: url, title: title, siteName: siteName, icons: icons);
+                    url: url,
+                    title: title,
+                    siteName: name,
+                    themeColor: themeColor,
+                    icons: icons,
+                    paletteColors: paletteColors,
+                  );
                   debugPrint(data.toString());
 
                   // hide the loader
@@ -129,26 +198,13 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
   }
 
   /// get the icons
-  Future<List<Favicon>> getIcons(String url, Bs4Element head) async {
+  Future<List<Favicon>> getIcons(String baseUrl, Bs4Element head) async {
     var icons = <String>{};
-
-    // get the base url
-    var baseUrl = head.find("base")?.attributes['href'];
-    if (baseUrl == null || baseUrl.trim().isEmpty) {
-      baseUrl = url;
-    }
-
-    // remove trailing slash
-    if (baseUrl.endsWith('/')) {
-      baseUrl = baseUrl.substring(0, baseUrl.length - 1);
-    }
 
     // add default icons
     for (var iconPath in iconPaths) {
       icons.add("$baseUrl$iconPath");
     }
-
-    var uri = Uri.parse(baseUrl);
 
     // extract icons
     var links = head.findAll("link");
@@ -159,26 +215,8 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
         // get the href attribute
         var href = attributes['href'];
         if (href != null && href.trim().isNotEmpty) {
-          var iconUrl = href.trim();
-
-          // Fix scheme relative URLs
-          if (iconUrl.startsWith('//')) {
-            iconUrl = '${uri.scheme}:$iconUrl';
-          }
-
-          // Fix relative URLs
-          if (iconUrl.startsWith('/')) {
-            iconUrl = '${uri.scheme}://${uri.host}$iconUrl';
-          }
-
-          // Fix naked URLs
-          if (!iconUrl.startsWith('http')) {
-            iconUrl = '${uri.scheme}://${uri.host}/$iconUrl';
-          }
-
-          // // Remove query strings
-          // iconUrl = iconUrl.split('?').first;
-
+          var iconUrl =
+              regenerateUrlWithBaseUrl(baseUrl: baseUrl, url: href.trim());
           icons.add(iconUrl);
         }
       }
@@ -239,7 +277,6 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
       return Favicon(
         url: url,
         type: contentType,
-        bytes: response.contentLength!,
         width: width,
         height: height,
       );
@@ -256,6 +293,41 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
     return true;
   }
 
+  /// Extract the color from icons
+  Future<List<Color>> getPaletteColors(List<Favicon> icons) async {
+    var colors = <Color>{};
+
+    for (var icon in icons) {
+      if (!icon.isSvg) {
+        try {
+          final paletteGenerator = await PaletteGenerator.fromImageProvider(
+            CachedNetworkImageProvider(
+              icon.url,
+              errorListener: (e) => debugPrint(e.toString()),
+            ),
+            timeout: const Duration(seconds: 5),
+            maximumColorCount: 3,
+          );
+          colors.addAll(paletteGenerator.colors);
+          // var dominant = paletteGenerator.dominantColor?.color;
+          // var vibrant = paletteGenerator.vibrantColor?.color;
+          //
+          // if (dominant != null) {
+          //   colors.add(dominant);
+          // }
+          //
+          // if (vibrant != null) {
+          //   colors.add(vibrant);
+          // }
+        } catch (e) {
+          debugPrint(e.toString());
+        }
+      }
+    }
+
+    return colors.toList();
+  }
+
   /// Load url html
   Future<String?> loadHtml(String url) async {
     try {
@@ -263,6 +335,22 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
       debugPrint('GET $url - ${response.statusCode}');
 
       return response.body;
+    } catch (error) {
+      debugPrint('GET $url - ${error.toString()}');
+      return null;
+    }
+  }
+
+  /// Load manifest
+  Future<Manifest?> loadManifest(String url) async {
+    try {
+      final response = await http.get(Uri.parse(url), headers: {
+        'content-type': 'application/json',
+      });
+      debugPrint('GET $url - ${response.statusCode}');
+
+      final data = json.decode(response.body);
+      return Manifest.fromJson(data);
     } catch (error) {
       debugPrint('GET $url - ${error.toString()}');
       return null;

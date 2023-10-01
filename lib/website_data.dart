@@ -1,9 +1,13 @@
+import 'package:flutter/material.dart';
+
 class WebsiteData {
   WebsiteData({
     required this.url,
     this.title = "",
     this.siteName = "",
+    this.themeColor = "",
     this.icons = const [],
+    this.paletteColors = const [],
   });
 
   /// Website url
@@ -15,12 +19,18 @@ class WebsiteData {
   /// Site name
   final String siteName;
 
+  /// Theme color
+  final String themeColor;
+
   /// Icons
   final List<Favicon> icons;
 
+  /// Colors
+  final List<Color> paletteColors;
+
   @override
   String toString() {
-    return "{url: $url, title: $title, siteName: $siteName, icons: $icons}";
+    return "{url: $url, title: $title, siteName: $siteName, icons: $icons, themeColor: $themeColor, paletteColors: $paletteColors}";
   }
 }
 
@@ -28,7 +38,6 @@ class Favicon implements Comparable<Favicon> {
   Favicon({
     required this.url,
     this.type = "",
-    this.bytes = 0,
     this.width = 0,
     this.height = 0,
   });
@@ -38,9 +47,6 @@ class Favicon implements Comparable<Favicon> {
 
   /// Icon type such as image/png, image/jpg, etc
   final String type;
-
-  /// Size of the icon in bytes
-  final int bytes;
 
   /// Icon width
   final int width;
@@ -76,6 +82,6 @@ class Favicon implements Comparable<Favicon> {
 
   @override
   String toString() {
-    return '{url: $url, type: $type, bytes: $bytes, width: $width, height: $height}';
+    return '{url: $url, type: $type, width: $width, height: $height}';
   }
 }

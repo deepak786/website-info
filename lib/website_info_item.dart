@@ -2,6 +2,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:website_info/utils.dart';
 import 'package:website_info/website_data.dart';
 
 class WebsiteInfoItem extends StatelessWidget {
@@ -41,6 +42,14 @@ class WebsiteInfoItem extends StatelessWidget {
                 ),
               ),
             ),
+            DataColumn(
+              label: Expanded(
+                child: Text(
+                  'Theme color',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
           ],
           rows: [
             DataRow(
@@ -48,6 +57,21 @@ class WebsiteInfoItem extends StatelessWidget {
                 DataCell(Text(data.url)),
                 DataCell(Text(data.title)),
                 DataCell(Text(data.siteName)),
+                DataCell(
+                  data.themeColor.isNotEmpty
+                      ? Row(
+                          children: [
+                            Container(
+                              width: 20,
+                              height: 20,
+                              color: colorFromHex(data.themeColor),
+                            ),
+                            const SizedBox(width: 8),
+                            Text(data.themeColor),
+                          ],
+                        )
+                      : const Text(""),
+                ),
               ],
             ),
           ],
@@ -92,14 +116,6 @@ class WebsiteInfoItem extends StatelessWidget {
                 ),
               ),
             ),
-            DataColumn(
-              label: Expanded(
-                child: Text(
-                  'Bytes',
-                  style: TextStyle(fontStyle: FontStyle.italic),
-                ),
-              ),
-            ),
           ],
           rows: data.icons
               .map(
@@ -122,7 +138,42 @@ class WebsiteInfoItem extends StatelessWidget {
                       ),
                     ),
                     DataCell(Text(e.type)),
-                    DataCell(Text(e.bytes.toString())),
+                  ],
+                ),
+              )
+              .toList(),
+        ),
+        const SizedBox(height: 16),
+        const Text(
+          "Palette colors",
+          style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
+        const SizedBox(height: 8),
+        DataTable(
+          columns: const [
+            DataColumn(
+              label: Expanded(
+                child: Text(
+                  '',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
+            DataColumn(
+              label: Expanded(
+                child: Text(
+                  'Hex code',
+                  style: TextStyle(fontStyle: FontStyle.italic),
+                ),
+              ),
+            ),
+          ],
+          rows: data.paletteColors
+              .map(
+                (e) => DataRow(
+                  cells: <DataCell>[
+                    DataCell(Container(width: 20, height: 20, color: e)),
+                    DataCell(Text(toHex(e))),
                   ],
                 ),
               )
