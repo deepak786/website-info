@@ -1,5 +1,11 @@
 import 'package:flutter/material.dart';
 
+String getCorsUrl(String url) {
+  String proxy = 'https://api.allorigins.win/raw?url=${Uri.encodeQueryComponent(url)}';
+  print(proxy);
+  return proxy;
+}
+
 /// Get an Hexadecimal representation of this color
 String toHex(Color color) {
   return '#${color.value.toRadixString(16).padLeft(8, '0')}'

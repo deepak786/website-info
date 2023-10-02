@@ -236,7 +236,7 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
   }
 
   Future<Favicon?> _verifyImage(String url) async {
-    var response = await http.get(Uri.parse(url));
+    var response = await http.get(Uri.parse(getCorsUrl(url)));
 
     var contentType = response.headers['content-type'];
     if (contentType == null || !contentType.contains('image')) return null;
@@ -302,7 +302,7 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
         try {
           final paletteGenerator = await PaletteGenerator.fromImageProvider(
             CachedNetworkImageProvider(
-              icon.url,
+              getCorsUrl(icon.url),
               errorListener: (e) => debugPrint(e.toString()),
             ),
             timeout: const Duration(seconds: 5),
@@ -331,7 +331,7 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
   /// Load url html
   Future<String?> loadHtml(String url) async {
     try {
-      final response = await http.get(Uri.parse(url));
+      final response = await http.get(Uri.parse(getCorsUrl(url)));
       debugPrint('GET $url - ${response.statusCode}');
 
       return response.body;
@@ -344,7 +344,7 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
   /// Load manifest
   Future<Manifest?> loadManifest(String url) async {
     try {
-      final response = await http.get(Uri.parse(url), headers: {
+      final response = await http.get(Uri.parse(getCorsUrl(url)), headers: {
         'content-type': 'application/json',
       });
       debugPrint('GET $url - ${response.statusCode}');

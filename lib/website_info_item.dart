@@ -188,14 +188,14 @@ class WebsiteInfoItem extends StatelessWidget {
       padding: const EdgeInsets.all(8),
       child: icon.isSvg
           ? SvgPicture.network(
-              icon.url,
+              getCorsUrl(icon.url),
               alignment: Alignment.centerLeft,
               fit: BoxFit.scaleDown,
               width: icon.width / 2,
               height: icon.height / 2,
             )
           : CachedNetworkImage(
-              imageUrl: icon.url,
+              imageUrl: getCorsUrl(icon.url),
               alignment: Alignment.centerLeft,
               fit: BoxFit.scaleDown,
               width: icon.width / 2,
