@@ -94,6 +94,8 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
                   List<Favicon> icons = [];
                   List<Color> paletteColors = [];
 
+                  List<ManifestIcon> manifestIcons = [];
+
                   if (html != null) {
                     BeautifulSoup bs = BeautifulSoup(html);
 
@@ -134,10 +136,7 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
                         if (manifest != null) {
                           name = manifest.name;
                           themeColor = manifest.themeColor;
-                          icons = manifest.icons
-                              .map((e) => e.toFavicon(baseUrl!))
-                              .toList()
-                            ..sort();
+                          manifestIcons = manifest.icons;
                         }
                       }
 
@@ -160,9 +159,12 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
                       }
 
                       // icons
-                      if (icons.isEmpty) {
-                        icons = await getIcons(baseUrl, head);
-                      }
+                      icons = await getIcons(
+                        baseUrl: baseUrl,
+                        head: head,
+                        body: bs.body,
+                        manifestIcons: manifestIcons,
+                      );
 
                       // palette color
                       paletteColors = await getPaletteColors(icons);
@@ -198,7 +200,12 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
   }
 
   /// get the icons
-  Future<List<Favicon>> getIcons(String baseUrl, Bs4Element head) async {
+  Future<List<Favicon>> getIcons({
+    required String baseUrl,
+    required Bs4Element head,
+    required Bs4Element? body,
+    required List<ManifestIcon> manifestIcons,
+  }) async {
     var icons = <String>{};
 
     // add default icons
@@ -206,7 +213,13 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
       icons.add("$baseUrl$iconPath");
     }
 
-    // extract icons
+    // manifest icons
+    for (var manifestIcon in manifestIcons) {
+      icons.add(
+          regenerateUrlWithBaseUrl(baseUrl: baseUrl, url: manifestIcon.src));
+    }
+
+    // extract icons from head
     var links = head.findAll("link");
     for (var link in links) {
       var attributes = link.attributes;
@@ -217,6 +230,42 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
         if (href != null && href.trim().isNotEmpty) {
           var iconUrl =
               regenerateUrlWithBaseUrl(baseUrl: baseUrl, url: href.trim());
+          icons.add(iconUrl);
+        }
+      }
+    }
+
+    // extract icons from body
+    if (body != null) {
+      // all divs with class logo
+      var logoDivs = body.findAll("div", class_: 'logo');
+      for (var logoDiv in logoDivs) {
+        var imgSrc = logoDiv.find("img")?.attributes['src'];
+        if (imgSrc != null && imgSrc.trim().isNotEmpty) {
+          var iconUrl =
+              regenerateUrlWithBaseUrl(baseUrl: baseUrl, url: imgSrc.trim());
+          icons.add(iconUrl);
+        }
+      }
+
+      // all img tags with class logo
+      var logoClassImages = body.findAll("img", class_: 'logo');
+      for (var img in logoClassImages) {
+        var imgSrc = img.attributes['src'];
+        if (imgSrc != null && imgSrc.trim().isNotEmpty) {
+          var iconUrl =
+              regenerateUrlWithBaseUrl(baseUrl: baseUrl, url: imgSrc.trim());
+          icons.add(iconUrl);
+        }
+      }
+
+      // all img tags with id logo
+      var logoIdImages = body.findAll("img", id: 'logo');
+      for (var img in logoIdImages) {
+        var imgSrc = img.attributes['src'];
+        if (imgSrc != null && imgSrc.trim().isNotEmpty) {
+          var iconUrl =
+              regenerateUrlWithBaseUrl(baseUrl: baseUrl, url: imgSrc.trim());
           icons.add(iconUrl);
         }
       }
@@ -236,50 +285,55 @@ class _ExtractWebsiteInfoState extends State<ExtractWebsiteInfo> {
   }
 
   Future<Favicon?> _verifyImage(String url) async {
-    var response = await http.get(Uri.parse(getCorsUrl(url)));
+    try {
+      var response = await http.get(Uri.parse(getCorsUrl(url)));
 
-    var contentType = response.headers['content-type'];
-    if (contentType == null || !contentType.contains('image')) return null;
+      var contentType = response.headers['content-type'];
+      if (contentType == null || !contentType.contains('image')) return null;
 
-    // Take extra care with ico's since they might be constructed manually
-    if (contentType == "image/x-icon") {
-      if (response.bodyBytes.length < 4) return null;
+      // Take extra care with ico's since they might be constructed manually
+      if (contentType == "image/x-icon") {
+        if (response.bodyBytes.length < 4) return null;
 
-      // Check if ico file contains a valid image signature
-      if (!_verifySignature(response.bodyBytes, icoSig) &&
-          !_verifySignature(response.bodyBytes, pngSig)) {
-        return null;
-      }
-    }
-
-    if (response.statusCode == 200 && (response.contentLength ?? 0) > 0) {
-      int width = 0;
-      int height = 0;
-
-      if (contentType == "image/svg+xml") {
-        // No need for size calculation on vector images
-        // use default
-        width = 100;
-        height = 100;
-      } else {
-        try {
-          var image = img.decodeImage(response.bodyBytes);
-          if (image != null && image.isValid) {
-            width = image.width;
-            height = image.height;
-          }
-        } catch (e) {
-          debugPrint(e.toString());
+        // Check if ico file contains a valid image signature
+        if (!_verifySignature(response.bodyBytes, icoSig) &&
+            !_verifySignature(response.bodyBytes, pngSig)) {
           return null;
         }
       }
 
-      return Favicon(
-        url: url,
-        type: contentType,
-        width: width,
-        height: height,
-      );
+      if (response.statusCode == 200 && (response.contentLength ?? 0) > 0) {
+        int width = 0;
+        int height = 0;
+
+        if (contentType == "image/svg+xml") {
+          // No need for size calculation on vector images
+          // use default
+          width = 100;
+          height = 100;
+        } else {
+          try {
+            var image = img.decodeImage(response.bodyBytes);
+            if (image != null && image.isValid) {
+              width = image.width;
+              height = image.height;
+            }
+          } catch (e) {
+            debugPrint(e.toString());
+            return null;
+          }
+        }
+
+        return Favicon(
+          url: url,
+          type: contentType,
+          width: width,
+          height: height,
+        );
+      }
+    } catch (e) {
+      debugPrint(e.toString());
+      return null;
     }
 
     return null;
