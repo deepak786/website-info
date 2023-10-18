@@ -7,10 +7,10 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:image/image.dart' as img;
 import 'package:palette_generator/palette_generator.dart';
-import 'package:website_info/manifest.dart';
+import 'package:website_info/parse_html/manifest.dart';
+import 'package:website_info/parse_html/website_data.dart';
+import 'package:website_info/parse_html/website_info_item.dart';
 import 'package:website_info/utils.dart';
-import 'package:website_info/website_data.dart';
-import 'package:website_info/website_info_item.dart';
 
 class ExtractWebsiteInfo extends StatefulWidget {
   const ExtractWebsiteInfo({Key? key}) : super(key: key);

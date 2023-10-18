@@ -1,5 +1,5 @@
+import 'package:website_info/parse_html/website_data.dart';
 import 'package:website_info/utils.dart';
-import 'package:website_info/website_data.dart';
 
 class Manifest {
   Manifest._({

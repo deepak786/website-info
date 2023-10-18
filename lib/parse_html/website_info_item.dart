@@ -2,8 +2,8 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_svg/flutter_svg.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:website_info/parse_html/website_data.dart';
 import 'package:website_info/utils.dart';
-import 'package:website_info/website_data.dart';
 
 class WebsiteInfoItem extends StatelessWidget {
   /// Display website info

@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:website_info/extract_website_info.dart';
+import 'package:website_info/parse_html/extract_website_info.dart';
 
 void main() {
   runApp(const MyApp());
